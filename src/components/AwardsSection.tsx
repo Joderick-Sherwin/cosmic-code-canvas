@@ -1,6 +1,7 @@
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
 import { Trophy, Users } from "lucide-react";
+import { ParallaxSection } from "./ParallaxSection";
 
 interface AwardItem {
   title: string;
@@ -27,27 +28,33 @@ export const AwardsSection = ({ awards, leadership }: AwardsSectionProps) => {
       {/* Background decoration */}
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-secondary/5 to-transparent pointer-events-none" />
 
-      <div className="max-w-6xl mx-auto relative z-10">
+      <ParallaxSection speed={0.15} className="max-w-6xl mx-auto relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 50 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.8 }}
+          className="text-center"
         >
-          <h2 className="section-title text-center mb-4">Awards & Leadership</h2>
+          <h2 className="section-title mb-4">Awards & Leadership</h2>
           <div className="w-24 h-1 bg-gradient-to-r from-primary to-secondary mx-auto mb-12 rounded-full" />
         </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Awards */}
           <motion.div
-            initial={{ opacity: 0, x: -50 }}
-            animate={isInView ? { opacity: 1, x: 0 } : {}}
+            initial={{ opacity: 0, y: 50 }}
+            animate={isInView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.8, delay: 0.2 }}
+            className="text-center"
           >
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-3 rounded-xl bg-primary/10 text-primary">
+            <div className="flex items-center justify-center gap-3 mb-6">
+              <motion.div 
+                className="p-3 rounded-xl bg-primary/10 text-primary"
+                whileHover={{ rotate: 360, scale: 1.1 }}
+                transition={{ duration: 0.5 }}
+              >
                 <Trophy className="w-6 h-6" />
-              </div>
+              </motion.div>
               <h3 className="text-2xl font-semibold text-foreground">Awards & Recognition</h3>
             </div>
 
@@ -55,11 +62,11 @@ export const AwardsSection = ({ awards, leadership }: AwardsSectionProps) => {
               {awards.items.map((award, index) => (
                 <motion.div
                   key={index}
-                  className="glass-card rounded-xl p-5 hover:border-primary/50 transition-all duration-300 group"
+                  className="glass-card rounded-xl p-5 hover:border-primary/50 transition-all duration-300 group hover:shadow-[0_0_25px_hsla(187,100%,50%,0.15)]"
                   initial={{ opacity: 0, y: 20 }}
                   animate={isInView ? { opacity: 1, y: 0 } : {}}
                   transition={{ delay: 0.3 + index * 0.1 }}
-                  whileHover={{ x: 5 }}
+                  whileHover={{ scale: 1.02, y: -5 }}
                 >
                   <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">
                     {award.title}
@@ -72,14 +79,19 @@ export const AwardsSection = ({ awards, leadership }: AwardsSectionProps) => {
 
           {/* Leadership */}
           <motion.div
-            initial={{ opacity: 0, x: 50 }}
-            animate={isInView ? { opacity: 1, x: 0 } : {}}
+            initial={{ opacity: 0, y: 50 }}
+            animate={isInView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.8, delay: 0.4 }}
+            className="text-center"
           >
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-3 rounded-xl bg-secondary/10 text-secondary">
+            <div className="flex items-center justify-center gap-3 mb-6">
+              <motion.div 
+                className="p-3 rounded-xl bg-secondary/10 text-secondary"
+                whileHover={{ rotate: 360, scale: 1.1 }}
+                transition={{ duration: 0.5 }}
+              >
                 <Users className="w-6 h-6" />
-              </div>
+              </motion.div>
               <h3 className="text-2xl font-semibold text-foreground">Leadership & Activities</h3>
             </div>
 
@@ -87,11 +99,11 @@ export const AwardsSection = ({ awards, leadership }: AwardsSectionProps) => {
               {leadership.items.map((item, index) => (
                 <motion.div
                   key={index}
-                  className="glass-card rounded-xl p-5 hover:border-secondary/50 transition-all duration-300 group"
+                  className="glass-card rounded-xl p-5 hover:border-secondary/50 transition-all duration-300 group hover:shadow-[0_0_25px_hsla(270,70%,60%,0.15)]"
                   initial={{ opacity: 0, y: 20 }}
                   animate={isInView ? { opacity: 1, y: 0 } : {}}
                   transition={{ delay: 0.5 + index * 0.1 }}
-                  whileHover={{ x: 5 }}
+                  whileHover={{ scale: 1.02, y: -5 }}
                 >
                   <h4 className="font-semibold text-foreground group-hover:text-secondary transition-colors">
                     {item.role}
@@ -107,7 +119,7 @@ export const AwardsSection = ({ awards, leadership }: AwardsSectionProps) => {
             </div>
           </motion.div>
         </div>
-      </div>
+      </ParallaxSection>
     </section>
   );
 };
