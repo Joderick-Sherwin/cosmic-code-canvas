@@ -1,5 +1,6 @@
-import { motion } from "framer-motion";
-import { MapPin, Mail, Phone, ChevronDown } from "lucide-react";
+import { motion, useScroll, useTransform } from "framer-motion";
+import { MapPin, Mail, Phone, ChevronDown, Sparkles } from "lucide-react";
+import { useRef } from "react";
 
 interface HeroData {
   name: string;
@@ -19,13 +20,48 @@ interface HeroSectionProps {
 }
 
 export const HeroSection = ({ hero, contact }: HeroSectionProps) => {
+  const ref = useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ["start start", "end start"],
+  });
+
+  const y = useTransform(scrollYProgress, [0, 1], [0, 200]);
+  const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
+  const scale = useTransform(scrollYProgress, [0, 0.5], [1, 0.9]);
+
   const scrollToSection = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
   };
 
   return (
-    <section className="relative min-h-screen flex flex-col items-center justify-center px-6">
-      <div className="max-w-4xl mx-auto text-center z-10">
+    <section ref={ref} className="relative min-h-screen flex flex-col items-center justify-center px-6 overflow-hidden">
+      <motion.div 
+        className="max-w-4xl mx-auto text-center z-10"
+        style={{ y, opacity, scale }}
+      >
+        {/* Animated sparkle icon */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="mb-6"
+        >
+          <motion.div
+            className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-r from-primary/20 to-secondary/20 border border-primary/30"
+            animate={{ 
+              boxShadow: [
+                "0 0 20px hsla(187, 100%, 50%, 0.3)",
+                "0 0 40px hsla(187, 100%, 50%, 0.5)",
+                "0 0 20px hsla(187, 100%, 50%, 0.3)",
+              ]
+            }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            <Sparkles className="w-8 h-8 text-primary" />
+          </motion.div>
+        </motion.div>
+
         {/* Animated title */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -33,10 +69,10 @@ export const HeroSection = ({ hero, contact }: HeroSectionProps) => {
           transition={{ duration: 0.8, delay: 0.2 }}
         >
           <motion.span
-            className="inline-block text-sm md:text-base tracking-[0.3em] text-primary uppercase mb-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
+            className="inline-block text-sm md:text-base tracking-[0.3em] text-primary uppercase mb-4 font-medium"
+            initial={{ opacity: 0, letterSpacing: "0.5em" }}
+            animate={{ opacity: 1, letterSpacing: "0.3em" }}
+            transition={{ delay: 0.5, duration: 1 }}
           >
             Welcome to my Universe
           </motion.span>
@@ -48,9 +84,13 @@ export const HeroSection = ({ hero, contact }: HeroSectionProps) => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.4 }}
         >
-          <span className="text-glow bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
+          <motion.span 
+            className="text-glow bg-gradient-to-r from-primary via-secondary to-primary bg-[length:200%_auto] bg-clip-text text-transparent"
+            animate={{ backgroundPosition: ["0%", "100%", "0%"] }}
+            transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
+          >
             {hero.name}
-          </span>
+          </motion.span>
         </motion.h1>
 
         <motion.h2
@@ -71,54 +111,63 @@ export const HeroSection = ({ hero, contact }: HeroSectionProps) => {
           {hero.subtitle}
         </motion.p>
 
-        {/* Contact info */}
+        {/* Contact info - centered */}
         <motion.div
           className="flex flex-wrap items-center justify-center gap-6 mb-12 text-muted-foreground"
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 1 }}
         >
-          <a
+          <motion.a
             href={`mailto:${contact.email}`}
-            className="flex items-center gap-2 hover:text-primary transition-colors group"
+            className="flex items-center gap-2 hover:text-primary transition-all duration-300 group px-4 py-2 rounded-full hover:bg-primary/10"
+            whileHover={{ scale: 1.05 }}
           >
-            <Mail className="w-4 h-4 group-hover:glow-cyan" />
+            <Mail className="w-4 h-4 group-hover:drop-shadow-[0_0_8px_hsla(187,100%,50%,0.8)]" />
             <span className="text-sm md:text-base">{contact.email}</span>
-          </a>
-          <a
+          </motion.a>
+          <motion.a
             href={`tel:${contact.phone}`}
-            className="flex items-center gap-2 hover:text-primary transition-colors group"
+            className="flex items-center gap-2 hover:text-primary transition-all duration-300 group px-4 py-2 rounded-full hover:bg-primary/10"
+            whileHover={{ scale: 1.05 }}
           >
             <Phone className="w-4 h-4" />
             <span className="text-sm md:text-base">{contact.phone}</span>
-          </a>
-          <div className="flex items-center gap-2">
+          </motion.a>
+          <motion.div 
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-secondary/10"
+            whileHover={{ scale: 1.05 }}
+          >
             <MapPin className="w-4 h-4 text-secondary" />
             <span className="text-sm md:text-base">{hero.location}</span>
-          </div>
+          </motion.div>
         </motion.div>
 
-        {/* CTA Buttons */}
+        {/* CTA Buttons - centered */}
         <motion.div
           className="flex flex-wrap items-center justify-center gap-4"
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 1.2 }}
         >
-          <button
+          <motion.button
             onClick={() => scrollToSection("projects")}
             className="btn-cosmic"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.98 }}
           >
             <span className="relative z-10">Explore My Work</span>
-          </button>
-          <button
+          </motion.button>
+          <motion.button
             onClick={() => scrollToSection("contact")}
-            className="px-8 py-3 rounded-full font-semibold border border-primary/50 text-primary hover:bg-primary/10 transition-all duration-300"
+            className="px-8 py-3 rounded-full font-semibold border border-primary/50 text-primary hover:bg-primary/10 transition-all duration-300 hover:border-primary hover:shadow-[0_0_20px_hsla(187,100%,50%,0.3)]"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.98 }}
           >
             Get In Touch
-          </button>
+          </motion.button>
         </motion.div>
-      </div>
+      </motion.div>
 
       {/* Scroll indicator */}
       <motion.div
@@ -130,34 +179,50 @@ export const HeroSection = ({ hero, contact }: HeroSectionProps) => {
           y: { duration: 2, repeat: Infinity, ease: "easeInOut" },
         }}
         onClick={() => scrollToSection("about")}
+        whileHover={{ scale: 1.2 }}
       >
-        <ChevronDown className="w-8 h-8 text-primary/60" />
+        <div className="flex flex-col items-center gap-2">
+          <span className="text-xs text-muted-foreground uppercase tracking-widest">Scroll</span>
+          <ChevronDown className="w-8 h-8 text-primary/60" />
+        </div>
       </motion.div>
 
-      {/* Decorative elements */}
+      {/* Decorative floating elements */}
       <motion.div
-        className="absolute top-1/3 left-10 w-2 h-2 rounded-full bg-primary"
+        className="absolute top-1/4 left-[15%] w-2 h-2 rounded-full bg-primary"
         animate={{
           scale: [1, 1.5, 1],
           opacity: [0.5, 1, 0.5],
+          y: [0, -20, 0],
         }}
-        transition={{ duration: 3, repeat: Infinity }}
+        transition={{ duration: 4, repeat: Infinity }}
       />
       <motion.div
-        className="absolute top-1/2 right-16 w-3 h-3 rounded-full bg-secondary"
+        className="absolute top-1/3 right-[20%] w-3 h-3 rounded-full bg-secondary"
         animate={{
           scale: [1, 1.3, 1],
           opacity: [0.4, 1, 0.4],
+          y: [0, 15, 0],
         }}
-        transition={{ duration: 4, repeat: Infinity, delay: 1 }}
+        transition={{ duration: 5, repeat: Infinity, delay: 1 }}
       />
       <motion.div
-        className="absolute bottom-1/3 left-20 w-1.5 h-1.5 rounded-full bg-accent"
+        className="absolute bottom-1/3 left-[25%] w-1.5 h-1.5 rounded-full bg-accent"
         animate={{
           scale: [1, 1.4, 1],
           opacity: [0.3, 1, 0.3],
+          x: [0, 10, 0],
         }}
         transition={{ duration: 3.5, repeat: Infinity, delay: 0.5 }}
+      />
+      <motion.div
+        className="absolute top-2/3 right-[15%] w-2 h-2 rounded-full bg-primary/70"
+        animate={{
+          scale: [1, 1.6, 1],
+          opacity: [0.3, 0.8, 0.3],
+          y: [0, -15, 0],
+        }}
+        transition={{ duration: 4.5, repeat: Infinity, delay: 2 }}
       />
     </section>
   );
