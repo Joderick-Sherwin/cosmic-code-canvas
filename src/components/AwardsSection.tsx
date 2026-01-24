@@ -1,7 +1,12 @@
-import { motion, useInView } from "framer-motion";
-import { useRef } from "react";
+import { motion } from "framer-motion";
 import { Trophy, Users } from "lucide-react";
 import { ParallaxSection } from "./ParallaxSection";
+import { 
+  useScrollAnimation, 
+  headerVariants, 
+  containerVariants, 
+  cardVariants
+} from "@/hooks/useScrollAnimation";
 
 interface AwardItem {
   title: string;
@@ -20,8 +25,7 @@ interface AwardsSectionProps {
 }
 
 export const AwardsSection = ({ awards, leadership }: AwardsSectionProps) => {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
+  const { ref, isInView } = useScrollAnimation();
 
   return (
     <section id="awards" className="py-24 px-6 relative" ref={ref}>
@@ -30,43 +34,48 @@ export const AwardsSection = ({ awards, leadership }: AwardsSectionProps) => {
 
       <ParallaxSection speed={0.15} className="max-w-6xl mx-auto relative z-10">
         <motion.div
-          initial={{ opacity: 0, y: 50 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.8 }}
+          variants={headerVariants}
+          initial="hidden"
+          animate={isInView ? "visible" : "hidden"}
           className="text-center"
         >
           <h2 className="section-title mb-4">Awards & Leadership</h2>
-          <div className="w-24 h-1 bg-gradient-to-r from-primary to-secondary mx-auto mb-12 rounded-full" />
+          <motion.div 
+            className="w-24 h-1 bg-gradient-to-r from-primary to-secondary mx-auto mb-12 rounded-full"
+            initial={{ scaleX: 0, opacity: 0 }}
+            animate={isInView ? { scaleX: 1, opacity: 1 } : {}}
+            transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
+          />
         </motion.div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <motion.div 
+          className="grid grid-cols-1 lg:grid-cols-2 gap-8"
+          variants={containerVariants}
+          initial="hidden"
+          animate={isInView ? "visible" : "hidden"}
+        >
           {/* Awards */}
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={isInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="text-center"
-          >
+          <motion.div variants={cardVariants} className="text-center">
             <div className="flex items-center justify-center gap-3 mb-6">
               <motion.div 
                 className="p-3 rounded-xl bg-primary/10 text-primary"
-                whileHover={{ rotate: 360, scale: 1.1 }}
-                transition={{ duration: 0.5 }}
+                whileHover={{ rotate: 360, scale: 1.1, transition: { duration: 0.5 } }}
               >
                 <Trophy className="w-6 h-6" />
               </motion.div>
               <h3 className="text-2xl font-semibold text-foreground">Awards & Recognition</h3>
             </div>
 
-            <div className="space-y-4">
+            <motion.div 
+              className="space-y-4"
+              variants={containerVariants}
+            >
               {awards.items.map((award, index) => (
                 <motion.div
                   key={index}
                   className="glass-card rounded-xl p-5 hover:border-primary/50 transition-all duration-300 group hover:shadow-[0_0_25px_hsla(187,100%,50%,0.15)]"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={isInView ? { opacity: 1, y: 0 } : {}}
-                  transition={{ delay: 0.3 + index * 0.1 }}
-                  whileHover={{ scale: 1.02, y: -5 }}
+                  variants={cardVariants}
+                  whileHover={{ scale: 1.02, y: -5, transition: { duration: 0.3 } }}
                 >
                   <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">
                     {award.title}
@@ -74,36 +83,31 @@ export const AwardsSection = ({ awards, leadership }: AwardsSectionProps) => {
                   <p className="text-muted-foreground text-sm mt-1">{award.description}</p>
                 </motion.div>
               ))}
-            </div>
+            </motion.div>
           </motion.div>
 
           {/* Leadership */}
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={isInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.8, delay: 0.4 }}
-            className="text-center"
-          >
+          <motion.div variants={cardVariants} className="text-center">
             <div className="flex items-center justify-center gap-3 mb-6">
               <motion.div 
                 className="p-3 rounded-xl bg-secondary/10 text-secondary"
-                whileHover={{ rotate: 360, scale: 1.1 }}
-                transition={{ duration: 0.5 }}
+                whileHover={{ rotate: 360, scale: 1.1, transition: { duration: 0.5 } }}
               >
                 <Users className="w-6 h-6" />
               </motion.div>
               <h3 className="text-2xl font-semibold text-foreground">Leadership & Activities</h3>
             </div>
 
-            <div className="space-y-4">
+            <motion.div 
+              className="space-y-4"
+              variants={containerVariants}
+            >
               {leadership.items.map((item, index) => (
                 <motion.div
                   key={index}
                   className="glass-card rounded-xl p-5 hover:border-secondary/50 transition-all duration-300 group hover:shadow-[0_0_25px_hsla(270,70%,60%,0.15)]"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={isInView ? { opacity: 1, y: 0 } : {}}
-                  transition={{ delay: 0.5 + index * 0.1 }}
-                  whileHover={{ scale: 1.02, y: -5 }}
+                  variants={cardVariants}
+                  whileHover={{ scale: 1.02, y: -5, transition: { duration: 0.3 } }}
                 >
                   <h4 className="font-semibold text-foreground group-hover:text-secondary transition-colors">
                     {item.role}
@@ -116,9 +120,9 @@ export const AwardsSection = ({ awards, leadership }: AwardsSectionProps) => {
                   )}
                 </motion.div>
               ))}
-            </div>
+            </motion.div>
           </motion.div>
-        </div>
+        </motion.div>
       </ParallaxSection>
     </section>
   );
