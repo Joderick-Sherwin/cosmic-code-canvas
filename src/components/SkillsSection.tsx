@@ -1,6 +1,11 @@
-import { motion, useInView } from "framer-motion";
-import { useRef } from "react";
+import { motion, type Variants } from "framer-motion";
 import { ParallaxSection } from "./ParallaxSection";
+import { 
+  useScrollAnimation, 
+  headerVariants, 
+  containerVariants, 
+  cardVariants
+} from "@/hooks/useScrollAnimation";
 
 interface SkillCategory {
   name: string;
@@ -12,22 +17,16 @@ interface SkillsSectionProps {
 }
 
 export const SkillsSection = ({ skills }: SkillsSectionProps) => {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
+  const { ref, isInView } = useScrollAnimation();
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0 },
+  const skillTagVariants: Variants = {
+    hidden: { opacity: 0, scale: 0.8, y: 10 },
+    visible: { 
+      opacity: 1, 
+      scale: 1, 
+      y: 0,
+      transition: { duration: 0.4 }
+    }
   };
 
   return (
@@ -37,13 +36,18 @@ export const SkillsSection = ({ skills }: SkillsSectionProps) => {
 
       <ParallaxSection speed={0.2} className="max-w-6xl mx-auto relative z-10">
         <motion.div
-          initial={{ opacity: 0, y: 50 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.8 }}
+          variants={headerVariants}
+          initial="hidden"
+          animate={isInView ? "visible" : "hidden"}
           className="text-center"
         >
           <h2 className="section-title mb-4">Skills & Technologies</h2>
-          <div className="w-24 h-1 bg-gradient-to-r from-primary to-secondary mx-auto mb-12 rounded-full" />
+          <motion.div 
+            className="w-24 h-1 bg-gradient-to-r from-primary to-secondary mx-auto mb-12 rounded-full"
+            initial={{ scaleX: 0, opacity: 0 }}
+            animate={isInView ? { scaleX: 1, opacity: 1 } : {}}
+            transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
+          />
         </motion.div>
 
         <motion.div
@@ -56,29 +60,31 @@ export const SkillsSection = ({ skills }: SkillsSectionProps) => {
             <motion.div
               key={index}
               className="glass-card rounded-2xl p-6 hover:border-primary/50 transition-all duration-300 group hover:shadow-[0_0_30px_hsla(187,100%,50%,0.15)]"
-              variants={itemVariants}
-              whileHover={{ scale: 1.02, y: -5 }}
+              variants={cardVariants}
+              whileHover={{ scale: 1.02, y: -5, transition: { duration: 0.3 } }}
             >
               <h3 className="text-xl font-semibold mb-4 text-foreground group-hover:text-primary transition-colors text-center">
                 {category.name}
               </h3>
-              <div className="flex flex-wrap justify-center gap-2">
+              <motion.div 
+                className="flex flex-wrap justify-center gap-2"
+                variants={containerVariants}
+              >
                 {category.items.map((skill, i) => (
                   <motion.span
                     key={i}
                     className="skill-tag"
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={isInView ? { opacity: 1, scale: 1 } : {}}
-                    transition={{ delay: index * 0.1 + i * 0.05 }}
+                    variants={skillTagVariants}
                     whileHover={{ 
                       scale: 1.1, 
                       boxShadow: "0 0 15px hsla(187, 100%, 50%, 0.4)",
+                      transition: { duration: 0.2 }
                     }}
                   >
                     {skill}
                   </motion.span>
                 ))}
-              </div>
+              </motion.div>
             </motion.div>
           ))}
         </motion.div>

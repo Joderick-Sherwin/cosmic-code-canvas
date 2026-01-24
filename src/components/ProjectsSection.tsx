@@ -1,7 +1,12 @@
-import { motion, useInView } from "framer-motion";
-import { useRef } from "react";
-import { ExternalLink, Code2 } from "lucide-react";
+import { motion, type Variants } from "framer-motion";
+import { Code2 } from "lucide-react";
 import { ParallaxSection } from "./ParallaxSection";
+import { 
+  useScrollAnimation, 
+  headerVariants, 
+  containerVariants, 
+  cardVariants
+} from "@/hooks/useScrollAnimation";
 
 interface Project {
   title: string;
@@ -15,31 +20,47 @@ interface ProjectsSectionProps {
 }
 
 export const ProjectsSection = ({ projects }: ProjectsSectionProps) => {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
+  const { ref, isInView } = useScrollAnimation();
+
+  const techTagVariants: Variants = {
+    hidden: { opacity: 0, scale: 0.8 },
+    visible: { 
+      opacity: 1, 
+      scale: 1,
+      transition: { duration: 0.3 }
+    }
+  };
 
   return (
     <section id="projects" className="py-24 px-6" ref={ref}>
       <ParallaxSection speed={0.15} className="max-w-6xl mx-auto">
         <motion.div
-          initial={{ opacity: 0, y: 50 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.8 }}
+          variants={headerVariants}
+          initial="hidden"
+          animate={isInView ? "visible" : "hidden"}
           className="text-center"
         >
           <h2 className="section-title mb-4">Featured Projects</h2>
-          <div className="w-24 h-1 bg-gradient-to-r from-primary to-secondary mx-auto mb-12 rounded-full" />
+          <motion.div 
+            className="w-24 h-1 bg-gradient-to-r from-primary to-secondary mx-auto mb-12 rounded-full"
+            initial={{ scaleX: 0, opacity: 0 }}
+            animate={isInView ? { scaleX: 1, opacity: 1 } : {}}
+            transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
+          />
         </motion.div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <motion.div 
+          className="grid grid-cols-1 lg:grid-cols-2 gap-8"
+          variants={containerVariants}
+          initial="hidden"
+          animate={isInView ? "visible" : "hidden"}
+        >
           {projects.items.map((project, index) => (
             <motion.div
               key={index}
               className="glass-card rounded-2xl overflow-hidden group hover:border-primary/50 transition-all duration-500 hover:shadow-[0_0_40px_hsla(187,100%,50%,0.2)]"
-              initial={{ opacity: 0, y: 50 }}
-              animate={isInView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.8, delay: index * 0.15 }}
-              whileHover={{ y: -10, scale: 1.02 }}
+              variants={cardVariants}
+              whileHover={{ y: -10, scale: 1.02, transition: { duration: 0.3 } }}
             >
               {/* Project header */}
               <div className="relative h-48 bg-gradient-to-br from-primary/20 via-secondary/20 to-accent/20 overflow-hidden">
@@ -69,8 +90,10 @@ export const ProjectsSection = ({ projects }: ProjectsSectionProps) => {
                 <div className="absolute inset-0 flex items-center justify-center">
                   <motion.div
                     className="p-4 rounded-2xl bg-background/50 backdrop-blur-sm border border-primary/30"
-                    whileHover={{ scale: 1.2, rotate: 10 }}
-                    transition={{ type: "spring", stiffness: 300 }}
+                    initial={{ scale: 0, rotate: -180 }}
+                    animate={isInView ? { scale: 1, rotate: 0 } : {}}
+                    transition={{ duration: 0.6, delay: 0.3 + index * 0.1, ease: "easeOut" }}
+                    whileHover={{ scale: 1.2, rotate: 10, transition: { duration: 0.3 } }}
                   >
                     <Code2 className="w-12 h-12 text-primary" />
                   </motion.div>
@@ -93,21 +116,25 @@ export const ProjectsSection = ({ projects }: ProjectsSectionProps) => {
                   {project.description}
                 </p>
 
-                <div className="flex flex-wrap justify-center gap-2">
+                <motion.div 
+                  className="flex flex-wrap justify-center gap-2"
+                  variants={containerVariants}
+                >
                   {project.technologies.map((tech, i) => (
                     <motion.span
                       key={i}
                       className="px-2 py-1 text-xs rounded-md bg-muted text-muted-foreground hover:bg-primary/20 hover:text-primary transition-colors"
-                      whileHover={{ scale: 1.1 }}
+                      variants={techTagVariants}
+                      whileHover={{ scale: 1.1, transition: { duration: 0.2 } }}
                     >
                       {tech}
                     </motion.span>
                   ))}
-                </div>
+                </motion.div>
               </div>
             </motion.div>
           ))}
-        </div>
+        </motion.div>
       </ParallaxSection>
     </section>
   );
