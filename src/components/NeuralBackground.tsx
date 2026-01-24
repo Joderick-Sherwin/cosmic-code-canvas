@@ -51,7 +51,7 @@ export const NeuralBackground = () => {
     window.addEventListener("resize", resizeCanvas);
 
     // Initialize nodes with base positions
-    const nodeCount = Math.min(100, Math.floor((window.innerWidth * window.innerHeight) / 12000));
+    const nodeCount = Math.min(120, Math.floor((window.innerWidth * window.innerHeight) / 10000));
     nodesRef.current = Array.from({ length: nodeCount }, () => {
       const x = Math.random() * canvas.width;
       const y = Math.random() * canvas.height;
@@ -60,9 +60,9 @@ export const NeuralBackground = () => {
         y,
         baseX: x,
         baseY: y,
-        vx: (Math.random() - 0.5) * 0.3,
-        vy: (Math.random() - 0.5) * 0.3,
-        radius: Math.random() * 2.5 + 1,
+        vx: (Math.random() - 0.5) * 0.8 + (Math.random() > 0.5 ? 0.3 : -0.3),
+        vy: (Math.random() - 0.5) * 0.8 + (Math.random() > 0.5 ? 0.3 : -0.3),
+        radius: Math.random() * 1.2 + 0.5,
         pulseOffset: Math.random() * Math.PI * 2,
       };
     });
@@ -96,8 +96,15 @@ export const NeuralBackground = () => {
           node.vy += dy * attractionStrength;
         }
 
-        // Gentle drift back to base position
-        const homeForce = 0.0001;
+        // Add constant gentle movement using sine waves for organic motion
+        const time = Date.now() * 0.001;
+        const wanderX = Math.sin(time * 0.5 + node.pulseOffset) * 0.15;
+        const wanderY = Math.cos(time * 0.4 + node.pulseOffset * 1.3) * 0.15;
+        node.vx += wanderX;
+        node.vy += wanderY;
+
+        // Very gentle drift back to base position (weaker to allow more movement)
+        const homeForce = 0.00005;
         node.vx += (node.baseX - node.x) * homeForce;
         node.vy += (node.baseY - node.y) * homeForce;
 
@@ -105,9 +112,9 @@ export const NeuralBackground = () => {
         node.x += node.vx;
         node.y += node.vy;
 
-        // Damping
-        node.vx *= 0.98;
-        node.vy *= 0.98;
+        // Light damping to maintain momentum
+        node.vx *= 0.995;
+        node.vy *= 0.995;
 
         // Wrap around edges
         if (node.x < -50) { node.x = canvas.width + 50; node.baseX = node.x; }
@@ -119,28 +126,28 @@ export const NeuralBackground = () => {
         const pulse = Math.sin(time * 2 + node.pulseOffset) * 0.5 + 0.5;
         const distFromMouse = Math.sqrt(Math.pow(mouse.x - node.x, 2) + Math.pow(mouse.y - node.y, 2));
         const mouseBrightness = Math.max(0, 1 - distFromMouse / 400);
-        const glowRadius = node.radius * (1 + pulse * 0.5 + mouseBrightness * 0.5);
+        const glowRadius = node.radius * (1 + pulse * 0.3 + mouseBrightness * 0.3);
 
-        // Draw node glow - more vibrant near cursor
+        // Draw node glow - scaled down
         const gradient = ctx.createRadialGradient(
           node.x, node.y, 0,
-          node.x, node.y, glowRadius * 15
+          node.x, node.y, glowRadius * 8
         );
-        const baseOpacity = 0.3 + pulse * 0.3 + mouseBrightness * 0.4;
+        const baseOpacity = 0.25 + pulse * 0.25 + mouseBrightness * 0.3;
         gradient.addColorStop(0, `hsla(187, 100%, 50%, ${baseOpacity})`);
-        gradient.addColorStop(0.3, `hsla(220, 80%, 60%, ${baseOpacity * 0.6})`);
-        gradient.addColorStop(0.6, `hsla(270, 70%, 60%, ${baseOpacity * 0.3})`);
+        gradient.addColorStop(0.3, `hsla(220, 80%, 60%, ${baseOpacity * 0.5})`);
+        gradient.addColorStop(0.6, `hsla(270, 70%, 60%, ${baseOpacity * 0.25})`);
         gradient.addColorStop(1, "transparent");
         
         ctx.beginPath();
-        ctx.arc(node.x, node.y, glowRadius * 15, 0, Math.PI * 2);
+        ctx.arc(node.x, node.y, glowRadius * 8, 0, Math.PI * 2);
         ctx.fillStyle = gradient;
         ctx.fill();
 
-        // Draw node core with enhanced brightness near cursor
+        // Draw node core - smaller
         ctx.beginPath();
-        ctx.arc(node.x, node.y, glowRadius * 1.5, 0, Math.PI * 2);
-        ctx.fillStyle = `hsla(187, 100%, ${70 + mouseBrightness * 20}%, ${0.7 + pulse * 0.3 + mouseBrightness * 0.3})`;
+        ctx.arc(node.x, node.y, glowRadius * 1.2, 0, Math.PI * 2);
+        ctx.fillStyle = `hsla(187, 100%, ${70 + mouseBrightness * 20}%, ${0.6 + pulse * 0.3 + mouseBrightness * 0.3})`;
         ctx.fill();
 
         // Draw connections - enhanced near cursor
@@ -150,7 +157,7 @@ export const NeuralBackground = () => {
             Math.pow(node.x - other.x, 2) + Math.pow(node.y - other.y, 2)
           );
 
-          if (distance < 180) {
+          if (distance < 140) {
             const midX = (node.x + other.x) / 2;
             const midY = (node.y + other.y) / 2;
             const midDistFromMouse = Math.sqrt(Math.pow(mouse.x - midX, 2) + Math.pow(mouse.y - midY, 2));
