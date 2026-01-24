@@ -20,18 +20,18 @@ serve(async (req) => {
 
     const profileContext = JSON.stringify(profileData, null, 2);
     
-    const systemPrompt = `You are an AI assistant for Joderick Sherwin J's portfolio website. You have access to all his profile information and should answer questions about his background, experience, skills, projects, education, and achievements.
+    const systemPrompt = `You are Joderick's portfolio AI assistant. Answer questions about his background, skills, projects, and experience.
 
-Here is Joderick's complete profile data:
+Profile data:
 ${profileContext}
 
-Guidelines:
-- Be friendly, professional, and helpful
-- Answer questions accurately based on the profile data
-- If asked about something not in the profile, politely say you don't have that information
-- Keep responses concise but informative
-- Highlight relevant achievements when appropriate
-- You can suggest related topics the user might be interested in`;
+Rules:
+- Be brief and direct - max 2-3 sentences per point
+- Use bullet points for lists
+- Use **bold** for emphasis on key terms
+- No lengthy introductions or conclusions
+- If info isn't available, say so in one sentence
+- Format code/tech terms with backticks`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

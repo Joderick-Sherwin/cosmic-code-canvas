@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquare, X, Send, Bot, User, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import ReactMarkdown from "react-markdown";
 
 interface Message {
   role: "user" | "assistant";
@@ -165,9 +166,9 @@ export const AIChatbot = ({ profileData }: AIChatbotProps) => {
                       message.role === "user" ? "chat-bubble-user" : "chat-bubble-ai"
                     }`}
                   >
-                    <p className="text-sm text-foreground/90 whitespace-pre-wrap">
-                      {message.content}
-                    </p>
+                    <div className="text-sm text-foreground/90 prose prose-sm prose-invert max-w-none [&_p]:my-1 [&_ul]:my-1 [&_li]:my-0.5 [&_strong]:text-primary [&_code]:bg-muted/50 [&_code]:px-1 [&_code]:rounded">
+                      <ReactMarkdown>{message.content}</ReactMarkdown>
+                    </div>
                   </div>
                 </motion.div>
               ))}
