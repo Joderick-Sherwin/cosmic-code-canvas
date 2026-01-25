@@ -6,9 +6,12 @@ interface Node {
   y: number;
   targetX: number;
   targetY: number;
+  baseX: number;
+  baseY: number;
   connections: number[];
   pulseOffset: number;
   layer: number;
+  depth: number;
 }
 
 export const NeuralBackground = () => {
@@ -16,6 +19,7 @@ export const NeuralBackground = () => {
   const nodesRef = useRef<Node[]>([]);
   const animationRef = useRef<number>();
   const mouseRef = useRef({ x: -1000, y: -1000 });
+  const scrollRef = useRef(0);
 
   // Smooth mouse tracking for orbs
   const mouseX = useMotionValue(0);
@@ -45,45 +49,55 @@ export const NeuralBackground = () => {
       initializeNetwork();
     };
 
-    // Create a structured neural network grid
+    // Create a structured neural network grid with depth layers
     const initializeNetwork = () => {
       const nodes: Node[] = [];
-      const cols = Math.floor(canvas.width / 120);
-      const rows = Math.floor(canvas.height / 120);
+      const cols = Math.floor(canvas.width / 140);
+      const rows = Math.floor(canvas.height / 140);
       const cellWidth = canvas.width / cols;
       const cellHeight = canvas.height / rows;
+      const depthLayers = 3;
 
-      // Create grid-based nodes with slight randomization
-      for (let row = 0; row < rows; row++) {
-        for (let col = 0; col < cols; col++) {
-          const baseX = col * cellWidth + cellWidth / 2;
-          const baseY = row * cellHeight + cellHeight / 2;
-          // Add randomization for organic feel
-          const x = baseX + (Math.random() - 0.5) * cellWidth * 0.6;
-          const y = baseY + (Math.random() - 0.5) * cellHeight * 0.6;
-          
-          nodes.push({
-            x,
-            y,
-            targetX: x,
-            targetY: y,
-            connections: [],
-            pulseOffset: Math.random() * Math.PI * 2,
-            layer: row % 3, // Create visual layers
-          });
+      // Create grid-based nodes with depth for 3D effect
+      for (let layer = 0; layer < depthLayers; layer++) {
+        const depthFactor = (layer + 1) / depthLayers;
+        const layerOffset = layer * 20;
+        
+        for (let row = 0; row < rows; row++) {
+          for (let col = 0; col < cols; col++) {
+            // Skip some nodes on deeper layers for performance
+            if (layer > 0 && Math.random() > 0.6) continue;
+            
+            const baseX = col * cellWidth + cellWidth / 2 + layerOffset;
+            const baseY = row * cellHeight + cellHeight / 2 + layerOffset;
+            const x = baseX + (Math.random() - 0.5) * cellWidth * 0.5;
+            const y = baseY + (Math.random() - 0.5) * cellHeight * 0.5;
+            
+            nodes.push({
+              x,
+              y,
+              targetX: x,
+              targetY: y,
+              baseX: x,
+              baseY: y,
+              connections: [],
+              pulseOffset: Math.random() * Math.PI * 2,
+              layer: row % 3,
+              depth: depthFactor,
+            });
+          }
         }
       }
 
-      // Build connections - connect to nearby nodes (neural network structure)
+      // Build connections within depth layers
       nodes.forEach((node, i) => {
         const connections: number[] = [];
         nodes.forEach((other, j) => {
-          if (i !== j) {
+          if (i !== j && Math.abs(node.depth - other.depth) < 0.2) {
             const dist = Math.sqrt(
               Math.pow(node.x - other.x, 2) + Math.pow(node.y - other.y, 2)
             );
-            // Connect to nodes within range, with preference for forward connections
-            if (dist < 180 && connections.length < 4) {
+            if (dist < 200 && connections.length < 3) {
               connections.push(j);
             }
           }
@@ -102,17 +116,40 @@ export const NeuralBackground = () => {
     };
     window.addEventListener("mousemove", handleMouseMoveCanvas);
 
-    const animate = () => {
+    const handleScroll = () => {
+      scrollRef.current = window.scrollY;
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    let lastTime = 0;
+    const targetFPS = 60;
+    const frameInterval = 1000 / targetFPS;
+
+    const animate = (currentTime: number) => {
+      // Throttle to target FPS for smooth performance
+      if (currentTime - lastTime < frameInterval) {
+        animationRef.current = requestAnimationFrame(animate);
+        return;
+      }
+      lastTime = currentTime;
+
       // Clear with trail effect
-      ctx.fillStyle = "rgba(3, 0, 20, 0.12)";
+      ctx.fillStyle = "rgba(3, 0, 20, 0.15)";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       const time = Date.now() * 0.001;
       const nodes = nodesRef.current;
       const mouse = mouseRef.current;
+      const scrollOffset = scrollRef.current * 0.02;
+
+      // Sort nodes by depth for proper layering (back to front)
+      const sortedNodes = [...nodes].sort((a, b) => a.depth - b.depth);
 
       // Draw connections first (behind nodes)
-      nodes.forEach((node, i) => {
+      sortedNodes.forEach((node, nodeIndex) => {
+        const i = nodes.indexOf(node);
+        const depthScale = 0.5 + node.depth * 0.5;
+        
         node.connections.forEach((j) => {
           const other = nodes[j];
           if (!other) return;
@@ -124,13 +161,12 @@ export const NeuralBackground = () => {
           );
           
           // Signal pulse along connection
-          const pulsePosition = (Math.sin(time * 2 + node.pulseOffset) + 1) / 2;
+          const pulsePosition = (Math.sin(time * 1.5 + node.pulseOffset) + 1) / 2;
           const pulseX = node.x + (other.x - node.x) * pulsePosition;
           const pulseY = node.y + (other.y - node.y) * pulsePosition;
 
-          // Base connection
-          const mouseFactor = Math.max(0, 1 - distFromMouse / 300);
-          const baseOpacity = 0.15 + mouseFactor * 0.4;
+          const mouseFactor = Math.max(0, 1 - distFromMouse / 280);
+          const baseOpacity = (0.1 + mouseFactor * 0.35) * depthScale;
 
           ctx.beginPath();
           ctx.moveTo(node.x, node.y);
@@ -140,70 +176,77 @@ export const NeuralBackground = () => {
             node.x, node.y, other.x, other.y
           );
           gradient.addColorStop(0, `hsla(187, 100%, 50%, ${baseOpacity})`);
-          gradient.addColorStop(0.5, `hsla(270, 70%, 60%, ${baseOpacity * 0.7})`);
+          gradient.addColorStop(0.5, `hsla(260, 70%, 60%, ${baseOpacity * 0.7})`);
           gradient.addColorStop(1, `hsla(187, 100%, 50%, ${baseOpacity})`);
 
           ctx.strokeStyle = gradient;
-          ctx.lineWidth = 0.8 + mouseFactor * 1.5;
+          ctx.lineWidth = (0.6 + mouseFactor * 1.2) * depthScale;
           ctx.stroke();
 
           // Draw signal pulse traveling along connection
-          if (mouseFactor > 0.1 || Math.random() > 0.97) {
+          if (mouseFactor > 0.15) {
             const pulseGlow = ctx.createRadialGradient(
               pulseX, pulseY, 0,
-              pulseX, pulseY, 8 + mouseFactor * 10
+              pulseX, pulseY, (6 + mouseFactor * 8) * depthScale
             );
-            pulseGlow.addColorStop(0, `hsla(187, 100%, 70%, ${0.6 + mouseFactor * 0.4})`);
-            pulseGlow.addColorStop(0.5, `hsla(270, 70%, 60%, ${0.3 + mouseFactor * 0.2})`);
+            pulseGlow.addColorStop(0, `hsla(187, 100%, 70%, ${(0.5 + mouseFactor * 0.4) * depthScale})`);
+            pulseGlow.addColorStop(0.5, `hsla(260, 70%, 60%, ${(0.25 + mouseFactor * 0.2) * depthScale})`);
             pulseGlow.addColorStop(1, "transparent");
 
             ctx.beginPath();
-            ctx.arc(pulseX, pulseY, 6 + mouseFactor * 8, 0, Math.PI * 2);
+            ctx.arc(pulseX, pulseY, (5 + mouseFactor * 6) * depthScale, 0, Math.PI * 2);
             ctx.fillStyle = pulseGlow;
             ctx.fill();
           }
         });
       });
 
-      // Update and draw nodes
-      nodes.forEach((node) => {
+      // Update and draw nodes with 3D depth effect
+      sortedNodes.forEach((node) => {
+        const depthScale = 0.5 + node.depth * 0.5;
         const dx = mouse.x - node.x;
         const dy = mouse.y - node.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
 
-        // Mouse attraction/repulsion
-        if (dist < 250 && dist > 0) {
-          const force = (250 - dist) / 250;
-          const attractStrength = 0.3;
-          node.targetX = node.x + dx * force * attractStrength;
-          node.targetY = node.y + dy * force * attractStrength;
+        // Mouse attraction - stronger for front layers
+        if (dist < 220 && dist > 0) {
+          const force = (220 - dist) / 220;
+          const attractStrength = 0.25 * node.depth;
+          node.targetX = node.baseX + dx * force * attractStrength;
+          node.targetY = node.baseY + dy * force * attractStrength;
+        } else {
+          // Return to base position
+          node.targetX = node.baseX;
+          node.targetY = node.baseY;
         }
 
+        // Apply scroll-based parallax (deeper layers move slower)
+        const parallaxY = scrollOffset * (1 - node.depth * 0.5);
+
         // Smooth movement toward target
-        node.x += (node.targetX - node.x) * 0.02;
-        node.y += (node.targetY - node.y) * 0.02;
+        node.x += (node.targetX - node.x) * 0.04;
+        node.y += (node.targetY - node.y + parallaxY) * 0.04;
 
         // Gentle oscillation
-        const oscillation = Math.sin(time + node.pulseOffset) * 3;
-        node.x += Math.sin(time * 0.5 + node.pulseOffset) * 0.3;
-        node.y += Math.cos(time * 0.4 + node.pulseOffset) * 0.3;
+        node.x += Math.sin(time * 0.4 + node.pulseOffset) * 0.2 * depthScale;
+        node.y += Math.cos(time * 0.35 + node.pulseOffset) * 0.2 * depthScale;
 
         // Calculate visual properties
         const distFromMouse = Math.sqrt(
           Math.pow(mouse.x - node.x, 2) + Math.pow(mouse.y - node.y, 2)
         );
-        const mouseBrightness = Math.max(0, 1 - distFromMouse / 300);
-        const pulse = (Math.sin(time * 2 + node.pulseOffset) + 1) / 2;
+        const mouseBrightness = Math.max(0, 1 - distFromMouse / 280);
+        const pulse = (Math.sin(time * 1.8 + node.pulseOffset) + 1) / 2;
 
-        // Node glow
-        const glowSize = 25 + pulse * 10 + mouseBrightness * 20;
+        // Node glow - size based on depth
+        const glowSize = (20 + pulse * 8 + mouseBrightness * 15) * depthScale;
         const glowGradient = ctx.createRadialGradient(
           node.x, node.y, 0,
           node.x, node.y, glowSize
         );
         
         const layerHue = node.layer === 0 ? 187 : node.layer === 1 ? 230 : 270;
-        const glowOpacity = 0.2 + pulse * 0.15 + mouseBrightness * 0.4;
+        const glowOpacity = (0.15 + pulse * 0.12 + mouseBrightness * 0.35) * depthScale;
         
         glowGradient.addColorStop(0, `hsla(${layerHue}, 100%, 60%, ${glowOpacity})`);
         glowGradient.addColorStop(0.4, `hsla(${layerHue}, 80%, 50%, ${glowOpacity * 0.5})`);
@@ -214,41 +257,44 @@ export const NeuralBackground = () => {
         ctx.fillStyle = glowGradient;
         ctx.fill();
 
-        // Node core
-        const coreSize = 2.5 + pulse * 1 + mouseBrightness * 2;
+        // Node core - size based on depth
+        const coreSize = (2 + pulse * 0.8 + mouseBrightness * 1.5) * depthScale;
         ctx.beginPath();
         ctx.arc(node.x, node.y, coreSize, 0, Math.PI * 2);
-        ctx.fillStyle = `hsla(${layerHue}, 100%, ${70 + mouseBrightness * 25}%, ${0.7 + pulse * 0.2 + mouseBrightness * 0.3})`;
+        ctx.fillStyle = `hsla(${layerHue}, 100%, ${65 + mouseBrightness * 25}%, ${(0.6 + pulse * 0.2 + mouseBrightness * 0.3) * depthScale})`;
         ctx.fill();
 
-        // Bright center point
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, coreSize * 0.4, 0, Math.PI * 2);
-        ctx.fillStyle = `hsla(${layerHue}, 100%, 90%, ${0.8 + mouseBrightness * 0.2})`;
-        ctx.fill();
+        // Bright center point for front layer nodes
+        if (node.depth > 0.6) {
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, coreSize * 0.35, 0, Math.PI * 2);
+          ctx.fillStyle = `hsla(${layerHue}, 100%, 90%, ${(0.7 + mouseBrightness * 0.3) * depthScale})`;
+          ctx.fill();
+        }
       });
 
       // Draw cursor interaction glow
       const cursorGradient = ctx.createRadialGradient(
         mouse.x, mouse.y, 0,
-        mouse.x, mouse.y, 180
+        mouse.x, mouse.y, 160
       );
-      cursorGradient.addColorStop(0, "hsla(187, 100%, 50%, 0.12)");
-      cursorGradient.addColorStop(0.5, "hsla(270, 70%, 60%, 0.04)");
+      cursorGradient.addColorStop(0, "hsla(187, 100%, 50%, 0.1)");
+      cursorGradient.addColorStop(0.5, "hsla(260, 70%, 60%, 0.03)");
       cursorGradient.addColorStop(1, "transparent");
       ctx.beginPath();
-      ctx.arc(mouse.x, mouse.y, 180, 0, Math.PI * 2);
+      ctx.arc(mouse.x, mouse.y, 160, 0, Math.PI * 2);
       ctx.fillStyle = cursorGradient;
       ctx.fill();
 
       animationRef.current = requestAnimationFrame(animate);
     };
 
-    animate();
+    animationRef.current = requestAnimationFrame(animate);
 
     return () => {
       window.removeEventListener("resize", resizeCanvas);
       window.removeEventListener("mousemove", handleMouseMoveCanvas);
+      window.removeEventListener("scroll", handleScroll);
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
@@ -262,12 +308,12 @@ export const NeuralBackground = () => {
         className="fixed inset-0 z-0 pointer-events-none"
         style={{ background: "hsl(240 20% 2%)" }}
       />
-      {/* Overlay gradient */}
-      <div className="fixed inset-0 z-0 pointer-events-none bg-gradient-to-b from-transparent via-background/30 to-background" />
+      {/* Overlay gradient for depth */}
+      <div className="fixed inset-0 z-0 pointer-events-none bg-gradient-to-b from-transparent via-background/20 to-background/80" />
 
       {/* Cursor-reactive floating orb */}
       <motion.div
-        className="fixed w-[400px] h-[400px] rounded-full opacity-15 blur-3xl pointer-events-none z-0"
+        className="fixed w-[350px] h-[350px] rounded-full opacity-12 blur-3xl pointer-events-none z-0"
         style={{
           background: "radial-gradient(circle, hsl(187 100% 50%) 0%, transparent 70%)",
           x: smoothMouseX,
@@ -277,33 +323,60 @@ export const NeuralBackground = () => {
         }}
       />
 
-      {/* Ambient orbs */}
+      {/* Depth-layered ambient orbs */}
       <motion.div
-        className="fixed top-1/4 left-1/4 w-80 h-80 rounded-full opacity-10 blur-3xl pointer-events-none z-0"
-        style={{ background: "radial-gradient(circle, hsl(187 100% 50%) 0%, transparent 70%)" }}
+        className="fixed top-1/4 left-1/4 w-72 h-72 rounded-full opacity-8 blur-3xl pointer-events-none z-0"
+        style={{ 
+          background: "radial-gradient(circle, hsl(187 100% 50%) 0%, transparent 70%)",
+          transformStyle: "preserve-3d",
+          transform: "translateZ(-100px)",
+        }}
         animate={{
-          x: [0, 60, 0],
-          y: [0, -40, 0],
-          scale: [1, 1.15, 1],
+          x: [0, 50, 0],
+          y: [0, -35, 0],
+          scale: [1, 1.1, 1],
         }}
         transition={{
-          duration: 20,
+          duration: 22,
           repeat: Infinity,
           ease: "easeInOut",
         }}
       />
       <motion.div
-        className="fixed bottom-1/4 right-1/4 w-64 h-64 rounded-full opacity-8 blur-3xl pointer-events-none z-0"
-        style={{ background: "radial-gradient(circle, hsl(270 70% 60%) 0%, transparent 70%)" }}
+        className="fixed bottom-1/4 right-1/4 w-56 h-56 rounded-full opacity-6 blur-3xl pointer-events-none z-0"
+        style={{ 
+          background: "radial-gradient(circle, hsl(260 70% 60%) 0%, transparent 70%)",
+          transformStyle: "preserve-3d",
+          transform: "translateZ(-200px)",
+        }}
         animate={{
-          x: [0, -50, 0],
-          y: [0, 50, 0],
-          scale: [1, 1.2, 1],
+          x: [0, -40, 0],
+          y: [0, 40, 0],
+          scale: [1, 1.15, 1],
         }}
         transition={{
-          duration: 25,
+          duration: 28,
           repeat: Infinity,
           ease: "easeInOut",
+        }}
+      />
+      <motion.div
+        className="fixed top-1/2 right-1/3 w-48 h-48 rounded-full opacity-5 blur-3xl pointer-events-none z-0"
+        style={{ 
+          background: "radial-gradient(circle, hsl(320 70% 50%) 0%, transparent 70%)",
+          transformStyle: "preserve-3d",
+          transform: "translateZ(-150px)",
+        }}
+        animate={{
+          x: [0, 30, 0],
+          y: [0, -50, 0],
+          scale: [1, 1.08, 1],
+        }}
+        transition={{
+          duration: 20,
+          repeat: Infinity,
+          ease: "easeInOut",
+          delay: 3,
         }}
       />
     </>
