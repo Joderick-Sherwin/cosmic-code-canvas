@@ -10,6 +10,7 @@ import { AwardsSection } from "@/components/AwardsSection";
 import { ContactSection } from "@/components/ContactSection";
 import { AIChatbot } from "@/components/AIChatbot";
 import { Footer } from "@/components/Footer";
+import { Depth3DContainer } from "@/components/ParallaxSection";
 import { useProfileContent } from "@/hooks/useProfileContent";
 import { Loader2 } from "lucide-react";
 
@@ -55,16 +56,18 @@ const Index = () => {
       <NeuralBackground />
       <Navigation />
       
-      <main className="relative z-10">
-        <HeroSection hero={hero} contact={contact} />
-        <AboutSection summary={summary} />
-        <ExperienceSection experience={experience} />
-        <SkillsSection skills={skills} />
-        <ProjectsSection projects={projects} />
-        <EducationSection education={education} certifications={certifications} />
-        <AwardsSection awards={awards} leadership={leadership} />
-        <ContactSection contact={contact} />
-      </main>
+      <Depth3DContainer>
+        <main className="relative z-10">
+          <HeroSection hero={hero} contact={contact} />
+          <AboutSection summary={summary} />
+          <ExperienceSection experience={experience} />
+          <SkillsSection skills={skills} />
+          <ProjectsSection projects={projects} />
+          <EducationSection education={education} certifications={certifications} />
+          <AwardsSection awards={awards} leadership={leadership} />
+          <ContactSection contact={contact} />
+        </main>
+      </Depth3DContainer>
 
       <Footer />
       <AIChatbot profileData={content} />
