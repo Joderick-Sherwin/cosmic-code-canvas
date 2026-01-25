@@ -1,23 +1,21 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { motion, useMotionValue, useSpring } from "framer-motion";
 
 interface Node {
   x: number;
   y: number;
-  vx: number;
-  vy: number;
-  radius: number;
+  targetX: number;
+  targetY: number;
+  connections: number[];
   pulseOffset: number;
-  baseX: number;
-  baseY: number;
+  layer: number;
 }
 
 export const NeuralBackground = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const nodesRef = useRef<Node[]>([]);
   const animationRef = useRef<number>();
-  const mouseRef = useRef({ x: 0, y: 0 });
-  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const mouseRef = useRef({ x: -1000, y: -1000 });
 
   // Smooth mouse tracking for orbs
   const mouseX = useMotionValue(0);
@@ -44,28 +42,60 @@ export const NeuralBackground = () => {
     const resizeCanvas = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
-      setDimensions({ width: window.innerWidth, height: window.innerHeight });
+      initializeNetwork();
+    };
+
+    // Create a structured neural network grid
+    const initializeNetwork = () => {
+      const nodes: Node[] = [];
+      const cols = Math.floor(canvas.width / 120);
+      const rows = Math.floor(canvas.height / 120);
+      const cellWidth = canvas.width / cols;
+      const cellHeight = canvas.height / rows;
+
+      // Create grid-based nodes with slight randomization
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          const baseX = col * cellWidth + cellWidth / 2;
+          const baseY = row * cellHeight + cellHeight / 2;
+          // Add randomization for organic feel
+          const x = baseX + (Math.random() - 0.5) * cellWidth * 0.6;
+          const y = baseY + (Math.random() - 0.5) * cellHeight * 0.6;
+          
+          nodes.push({
+            x,
+            y,
+            targetX: x,
+            targetY: y,
+            connections: [],
+            pulseOffset: Math.random() * Math.PI * 2,
+            layer: row % 3, // Create visual layers
+          });
+        }
+      }
+
+      // Build connections - connect to nearby nodes (neural network structure)
+      nodes.forEach((node, i) => {
+        const connections: number[] = [];
+        nodes.forEach((other, j) => {
+          if (i !== j) {
+            const dist = Math.sqrt(
+              Math.pow(node.x - other.x, 2) + Math.pow(node.y - other.y, 2)
+            );
+            // Connect to nodes within range, with preference for forward connections
+            if (dist < 180 && connections.length < 4) {
+              connections.push(j);
+            }
+          }
+        });
+        node.connections = connections;
+      });
+
+      nodesRef.current = nodes;
     };
 
     resizeCanvas();
     window.addEventListener("resize", resizeCanvas);
-
-    // Initialize nodes with base positions
-    const nodeCount = Math.min(120, Math.floor((window.innerWidth * window.innerHeight) / 10000));
-    nodesRef.current = Array.from({ length: nodeCount }, () => {
-      const x = Math.random() * canvas.width;
-      const y = Math.random() * canvas.height;
-      return {
-        x,
-        y,
-        baseX: x,
-        baseY: y,
-        vx: (Math.random() - 0.5) * 0.8 + (Math.random() > 0.5 ? 0.3 : -0.3),
-        vy: (Math.random() - 0.5) * 0.8 + (Math.random() > 0.5 ? 0.3 : -0.3),
-        radius: Math.random() * 1.2 + 0.5,
-        pulseOffset: Math.random() * Math.PI * 2,
-      };
-    });
 
     const handleMouseMoveCanvas = (e: MouseEvent) => {
       mouseRef.current = { x: e.clientX, y: e.clientY };
@@ -73,126 +103,141 @@ export const NeuralBackground = () => {
     window.addEventListener("mousemove", handleMouseMoveCanvas);
 
     const animate = () => {
-      // Create a trail effect with semi-transparent clear
-      ctx.fillStyle = "rgba(3, 0, 20, 0.08)";
+      // Clear with trail effect
+      ctx.fillStyle = "rgba(3, 0, 20, 0.12)";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       const time = Date.now() * 0.001;
       const nodes = nodesRef.current;
       const mouse = mouseRef.current;
 
-      // Update and draw nodes
+      // Draw connections first (behind nodes)
       nodes.forEach((node, i) => {
-        // Calculate distance from mouse
+        node.connections.forEach((j) => {
+          const other = nodes[j];
+          if (!other) return;
+
+          const midX = (node.x + other.x) / 2;
+          const midY = (node.y + other.y) / 2;
+          const distFromMouse = Math.sqrt(
+            Math.pow(mouse.x - midX, 2) + Math.pow(mouse.y - midY, 2)
+          );
+          
+          // Signal pulse along connection
+          const pulsePosition = (Math.sin(time * 2 + node.pulseOffset) + 1) / 2;
+          const pulseX = node.x + (other.x - node.x) * pulsePosition;
+          const pulseY = node.y + (other.y - node.y) * pulsePosition;
+
+          // Base connection
+          const mouseFactor = Math.max(0, 1 - distFromMouse / 300);
+          const baseOpacity = 0.15 + mouseFactor * 0.4;
+
+          ctx.beginPath();
+          ctx.moveTo(node.x, node.y);
+          ctx.lineTo(other.x, other.y);
+
+          const gradient = ctx.createLinearGradient(
+            node.x, node.y, other.x, other.y
+          );
+          gradient.addColorStop(0, `hsla(187, 100%, 50%, ${baseOpacity})`);
+          gradient.addColorStop(0.5, `hsla(270, 70%, 60%, ${baseOpacity * 0.7})`);
+          gradient.addColorStop(1, `hsla(187, 100%, 50%, ${baseOpacity})`);
+
+          ctx.strokeStyle = gradient;
+          ctx.lineWidth = 0.8 + mouseFactor * 1.5;
+          ctx.stroke();
+
+          // Draw signal pulse traveling along connection
+          if (mouseFactor > 0.1 || Math.random() > 0.97) {
+            const pulseGlow = ctx.createRadialGradient(
+              pulseX, pulseY, 0,
+              pulseX, pulseY, 8 + mouseFactor * 10
+            );
+            pulseGlow.addColorStop(0, `hsla(187, 100%, 70%, ${0.6 + mouseFactor * 0.4})`);
+            pulseGlow.addColorStop(0.5, `hsla(270, 70%, 60%, ${0.3 + mouseFactor * 0.2})`);
+            pulseGlow.addColorStop(1, "transparent");
+
+            ctx.beginPath();
+            ctx.arc(pulseX, pulseY, 6 + mouseFactor * 8, 0, Math.PI * 2);
+            ctx.fillStyle = pulseGlow;
+            ctx.fill();
+          }
+        });
+      });
+
+      // Update and draw nodes
+      nodes.forEach((node) => {
         const dx = mouse.x - node.x;
         const dy = mouse.y - node.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        
-        // Enhanced mouse interaction - stronger attraction/repulsion
-        if (dist < 300) {
-          const force = (300 - dist) / 300;
-          const attractionStrength = 0.0008 * force * force;
-          node.vx += dx * attractionStrength;
-          node.vy += dy * attractionStrength;
+
+        // Mouse attraction/repulsion
+        if (dist < 250 && dist > 0) {
+          const force = (250 - dist) / 250;
+          const attractStrength = 0.3;
+          node.targetX = node.x + dx * force * attractStrength;
+          node.targetY = node.y + dy * force * attractStrength;
         }
 
-        // Add constant gentle movement using sine waves for organic motion
-        const time = Date.now() * 0.001;
-        const wanderX = Math.sin(time * 0.5 + node.pulseOffset) * 0.15;
-        const wanderY = Math.cos(time * 0.4 + node.pulseOffset * 1.3) * 0.15;
-        node.vx += wanderX;
-        node.vy += wanderY;
+        // Smooth movement toward target
+        node.x += (node.targetX - node.x) * 0.02;
+        node.y += (node.targetY - node.y) * 0.02;
 
-        // Very gentle drift back to base position (weaker to allow more movement)
-        const homeForce = 0.00005;
-        node.vx += (node.baseX - node.x) * homeForce;
-        node.vy += (node.baseY - node.y) * homeForce;
+        // Gentle oscillation
+        const oscillation = Math.sin(time + node.pulseOffset) * 3;
+        node.x += Math.sin(time * 0.5 + node.pulseOffset) * 0.3;
+        node.y += Math.cos(time * 0.4 + node.pulseOffset) * 0.3;
 
-        // Update position
-        node.x += node.vx;
-        node.y += node.vy;
-
-        // Light damping to maintain momentum
-        node.vx *= 0.995;
-        node.vy *= 0.995;
-
-        // Wrap around edges
-        if (node.x < -50) { node.x = canvas.width + 50; node.baseX = node.x; }
-        if (node.x > canvas.width + 50) { node.x = -50; node.baseX = node.x; }
-        if (node.y < -50) { node.y = canvas.height + 50; node.baseY = node.y; }
-        if (node.y > canvas.height + 50) { node.y = -50; node.baseY = node.y; }
-
-        // Enhanced pulsing effect
-        const pulse = Math.sin(time * 2 + node.pulseOffset) * 0.5 + 0.5;
-        const distFromMouse = Math.sqrt(Math.pow(mouse.x - node.x, 2) + Math.pow(mouse.y - node.y, 2));
-        const mouseBrightness = Math.max(0, 1 - distFromMouse / 400);
-        const glowRadius = node.radius * (1 + pulse * 0.3 + mouseBrightness * 0.3);
-
-        // Draw node glow - scaled down
-        const gradient = ctx.createRadialGradient(
-          node.x, node.y, 0,
-          node.x, node.y, glowRadius * 8
+        // Calculate visual properties
+        const distFromMouse = Math.sqrt(
+          Math.pow(mouse.x - node.x, 2) + Math.pow(mouse.y - node.y, 2)
         );
-        const baseOpacity = 0.25 + pulse * 0.25 + mouseBrightness * 0.3;
-        gradient.addColorStop(0, `hsla(187, 100%, 50%, ${baseOpacity})`);
-        gradient.addColorStop(0.3, `hsla(220, 80%, 60%, ${baseOpacity * 0.5})`);
-        gradient.addColorStop(0.6, `hsla(270, 70%, 60%, ${baseOpacity * 0.25})`);
-        gradient.addColorStop(1, "transparent");
+        const mouseBrightness = Math.max(0, 1 - distFromMouse / 300);
+        const pulse = (Math.sin(time * 2 + node.pulseOffset) + 1) / 2;
+
+        // Node glow
+        const glowSize = 25 + pulse * 10 + mouseBrightness * 20;
+        const glowGradient = ctx.createRadialGradient(
+          node.x, node.y, 0,
+          node.x, node.y, glowSize
+        );
         
+        const layerHue = node.layer === 0 ? 187 : node.layer === 1 ? 230 : 270;
+        const glowOpacity = 0.2 + pulse * 0.15 + mouseBrightness * 0.4;
+        
+        glowGradient.addColorStop(0, `hsla(${layerHue}, 100%, 60%, ${glowOpacity})`);
+        glowGradient.addColorStop(0.4, `hsla(${layerHue}, 80%, 50%, ${glowOpacity * 0.5})`);
+        glowGradient.addColorStop(1, "transparent");
+
         ctx.beginPath();
-        ctx.arc(node.x, node.y, glowRadius * 8, 0, Math.PI * 2);
-        ctx.fillStyle = gradient;
+        ctx.arc(node.x, node.y, glowSize, 0, Math.PI * 2);
+        ctx.fillStyle = glowGradient;
         ctx.fill();
 
-        // Draw node core - smaller
+        // Node core
+        const coreSize = 2.5 + pulse * 1 + mouseBrightness * 2;
         ctx.beginPath();
-        ctx.arc(node.x, node.y, glowRadius * 1.2, 0, Math.PI * 2);
-        ctx.fillStyle = `hsla(187, 100%, ${70 + mouseBrightness * 20}%, ${0.6 + pulse * 0.3 + mouseBrightness * 0.3})`;
+        ctx.arc(node.x, node.y, coreSize, 0, Math.PI * 2);
+        ctx.fillStyle = `hsla(${layerHue}, 100%, ${70 + mouseBrightness * 25}%, ${0.7 + pulse * 0.2 + mouseBrightness * 0.3})`;
         ctx.fill();
 
-        // Draw connections - enhanced near cursor
-        for (let j = i + 1; j < nodes.length; j++) {
-          const other = nodes[j];
-          const distance = Math.sqrt(
-            Math.pow(node.x - other.x, 2) + Math.pow(node.y - other.y, 2)
-          );
-
-          if (distance < 140) {
-            const midX = (node.x + other.x) / 2;
-            const midY = (node.y + other.y) / 2;
-            const midDistFromMouse = Math.sqrt(Math.pow(mouse.x - midX, 2) + Math.pow(mouse.y - midY, 2));
-            const connectionBrightness = Math.max(0, 1 - midDistFromMouse / 300);
-            
-            const opacity = (1 - distance / 180) * (0.3 + connectionBrightness * 0.5);
-            
-            ctx.beginPath();
-            ctx.moveTo(node.x, node.y);
-            ctx.lineTo(other.x, other.y);
-            
-            const lineGradient = ctx.createLinearGradient(
-              node.x, node.y, other.x, other.y
-            );
-            lineGradient.addColorStop(0, `hsla(187, 100%, 50%, ${opacity})`);
-            lineGradient.addColorStop(0.5, `hsla(270, 70%, 60%, ${opacity * 0.7})`);
-            lineGradient.addColorStop(1, `hsla(187, 100%, 50%, ${opacity})`);
-            
-            ctx.strokeStyle = lineGradient;
-            ctx.lineWidth = 0.5 + connectionBrightness * 1;
-            ctx.stroke();
-          }
-        }
+        // Bright center point
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, coreSize * 0.4, 0, Math.PI * 2);
+        ctx.fillStyle = `hsla(${layerHue}, 100%, 90%, ${0.8 + mouseBrightness * 0.2})`;
+        ctx.fill();
       });
 
-      // Draw cursor glow effect
+      // Draw cursor interaction glow
       const cursorGradient = ctx.createRadialGradient(
         mouse.x, mouse.y, 0,
-        mouse.x, mouse.y, 200
+        mouse.x, mouse.y, 180
       );
-      cursorGradient.addColorStop(0, "hsla(187, 100%, 50%, 0.15)");
-      cursorGradient.addColorStop(0.5, "hsla(270, 70%, 60%, 0.05)");
+      cursorGradient.addColorStop(0, "hsla(187, 100%, 50%, 0.12)");
+      cursorGradient.addColorStop(0.5, "hsla(270, 70%, 60%, 0.04)");
       cursorGradient.addColorStop(1, "transparent");
       ctx.beginPath();
-      ctx.arc(mouse.x, mouse.y, 200, 0, Math.PI * 2);
+      ctx.arc(mouse.x, mouse.y, 180, 0, Math.PI * 2);
       ctx.fillStyle = cursorGradient;
       ctx.fill();
 
@@ -219,10 +264,10 @@ export const NeuralBackground = () => {
       />
       {/* Overlay gradient */}
       <div className="fixed inset-0 z-0 pointer-events-none bg-gradient-to-b from-transparent via-background/30 to-background" />
-      
-      {/* Cursor-reactive floating orbs */}
+
+      {/* Cursor-reactive floating orb */}
       <motion.div
-        className="fixed w-[500px] h-[500px] rounded-full opacity-20 blur-3xl pointer-events-none z-0"
+        className="fixed w-[400px] h-[400px] rounded-full opacity-15 blur-3xl pointer-events-none z-0"
         style={{
           background: "radial-gradient(circle, hsl(187 100% 50%) 0%, transparent 70%)",
           x: smoothMouseX,
@@ -231,15 +276,15 @@ export const NeuralBackground = () => {
           translateY: "-50%",
         }}
       />
-      
+
       {/* Ambient orbs */}
       <motion.div
-        className="fixed top-1/4 left-1/4 w-96 h-96 rounded-full opacity-15 blur-3xl pointer-events-none z-0"
+        className="fixed top-1/4 left-1/4 w-80 h-80 rounded-full opacity-10 blur-3xl pointer-events-none z-0"
         style={{ background: "radial-gradient(circle, hsl(187 100% 50%) 0%, transparent 70%)" }}
         animate={{
-          x: [0, 80, 0],
-          y: [0, -50, 0],
-          scale: [1, 1.2, 1],
+          x: [0, 60, 0],
+          y: [0, -40, 0],
+          scale: [1, 1.15, 1],
         }}
         transition={{
           duration: 20,
@@ -248,32 +293,17 @@ export const NeuralBackground = () => {
         }}
       />
       <motion.div
-        className="fixed bottom-1/4 right-1/4 w-80 h-80 rounded-full opacity-10 blur-3xl pointer-events-none z-0"
+        className="fixed bottom-1/4 right-1/4 w-64 h-64 rounded-full opacity-8 blur-3xl pointer-events-none z-0"
         style={{ background: "radial-gradient(circle, hsl(270 70% 60%) 0%, transparent 70%)" }}
         animate={{
-          x: [0, -60, 0],
-          y: [0, 60, 0],
-          scale: [1, 1.3, 1],
+          x: [0, -50, 0],
+          y: [0, 50, 0],
+          scale: [1, 1.2, 1],
         }}
         transition={{
           duration: 25,
           repeat: Infinity,
           ease: "easeInOut",
-        }}
-      />
-      <motion.div
-        className="fixed top-1/2 right-1/3 w-64 h-64 rounded-full opacity-10 blur-3xl pointer-events-none z-0"
-        style={{ background: "radial-gradient(circle, hsl(320 70% 50%) 0%, transparent 70%)" }}
-        animate={{
-          x: [0, 40, 0],
-          y: [0, -80, 0],
-          scale: [1, 1.15, 1],
-        }}
-        transition={{
-          duration: 18,
-          repeat: Infinity,
-          ease: "easeInOut",
-          delay: 2,
         }}
       />
     </>

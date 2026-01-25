@@ -4,7 +4,7 @@ import { useRef } from "react";
 // Smooth easing curve for natural feel
 const easeOut: Easing = [0.25, 0.46, 0.45, 0.94];
 
-// Animation variants for section headers
+// Animation variants for section headers with entry/exit
 export const headerVariants: Variants = {
   hidden: { 
     opacity: 0, 
@@ -17,6 +17,15 @@ export const headerVariants: Variants = {
     filter: "blur(0px)",
     transition: {
       duration: 0.7,
+      ease: easeOut,
+    }
+  },
+  exit: {
+    opacity: 0,
+    y: -30,
+    filter: "blur(8px)",
+    transition: {
+      duration: 0.5,
       ease: easeOut,
     }
   }
@@ -32,14 +41,21 @@ export const containerVariants: Variants = {
       delayChildren: 0.1,
     },
   },
+  exit: {
+    opacity: 0,
+    transition: {
+      staggerChildren: 0.05,
+      staggerDirection: -1,
+    },
+  },
 };
 
-// Card animation variants
+// Card animation variants with entry/exit
 export const cardVariants: Variants = {
   hidden: { 
     opacity: 0, 
-    y: 40,
-    scale: 0.95,
+    y: 50,
+    scale: 0.92,
     filter: "blur(8px)"
   },
   visible: { 
@@ -51,10 +67,20 @@ export const cardVariants: Variants = {
       duration: 0.6,
       ease: easeOut,
     }
+  },
+  exit: {
+    opacity: 0,
+    y: -40,
+    scale: 0.95,
+    filter: "blur(6px)",
+    transition: {
+      duration: 0.4,
+      ease: easeOut,
+    }
   }
 };
 
-// List item variants for staggered lists
+// List item variants for staggered lists with entry/exit
 export const listItemVariants: Variants = {
   hidden: { 
     opacity: 0, 
@@ -69,13 +95,23 @@ export const listItemVariants: Variants = {
       duration: 0.5,
       ease: easeOut,
     }
+  },
+  exit: {
+    opacity: 0,
+    x: 20,
+    filter: "blur(4px)",
+    transition: {
+      duration: 0.3,
+      ease: easeOut,
+    }
   }
 };
 
-// Hook for scroll-triggered animations
+// Hook for scroll-triggered animations - now supports entry AND exit
 export const useScrollAnimation = (margin: string = "-100px") => {
   const ref = useRef<HTMLElement>(null);
-  const isInView = useInView(ref, { once: true, margin: margin as any });
+  // Changed once: false to allow exit animations
+  const isInView = useInView(ref, { once: false, margin: margin as any, amount: 0.2 });
   
   return { ref, isInView };
 };
